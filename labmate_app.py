@@ -7,7 +7,9 @@ st.title("🧪 LabMate: AI Copilot for Wet Lab Protocols")
 st.write("1. Pick or customize the instruction/template. 2. Paste your protocol. 3. Click Optimize. You can save reusable instruction templates or full presets (type + instruction).")
 
 # --- base prompt presets ---
-protocol_type = st.selectbox("Protocol type (preset)", ["General wet lab", "PCR", "Rodent brain surgery"])
+protocol_type = st.selectbox("Protocol type (preset)", ["General wet lab", "PCR", "Rodent brain surgery","RNA extraction","Cell transfection",
+    "Histology","Flow Cytometry", "Synthetic biology assay", "Organoid cultur])
+
 st.caption("Pick the context that best matches your protocol; this seeds a starting instruction. You can edit it below.")
 
 default_prompts = {
