@@ -1,12 +1,14 @@
 import streamlit as st
 import openai
 
+# --- page setup ---
 st.set_page_config(page_title="LabMate", layout="wide")
 st.title("🧪 LabMate: AI Copilot for Wet Lab Protocols")
-st.write("Paste a protocol and customize the instruction before optimization.")
+st.write("Paste a protocol below, pick or customize the instruction template, then click Optimize.")
 
-# Protocol-type presets
+# --- prompt presets + save/load logic ---
 protocol_type = st.selectbox("Protocol type (preset)", ["General wet lab", "PCR", "Rodent brain surgery"])
+
 default_prompts = {
     "General wet lab": """You are a practical wet lab assistant. Given the protocol below, do the following clearly and concisely:
 
@@ -38,17 +40,54 @@ Protocol:
 {protocol_text}"""
 }
 
-# Editable prompt area
-base_prompt = default_prompts[protocol_type]
-custom_prompt = st.text_area("Instruction template (you can edit)", base_prompt, height=340)
+# initialize saved prompts in session
+if "saved_prompts" not in st.session_state:
+    st.session_state.saved_prompts = {}  # name -> prompt string
 
-# Protocol input
+# base prompt from the selected preset
+base_prompt = default_prompts[protocol_type]
+
+# UI for loading / resetting instruction templates
+col1, col2 = st.columns([3, 2])
+with col1:
+    saved_choice = st.selectbox("Load saved instruction (optional)", ["-- none --"] + list(st.session_state.saved_prompts.keys()))
+with col2:
+    if st.button("Reset to preset"):
+        st.session_state.current_prompt = base_prompt
+        st.experimental_rerun()
+
+# Determine current prompt source
+if saved_choice != "-- none --" and saved_choice in st.session_state.saved_prompts:
+    current_prompt = st.session_state.saved_prompts[saved_choice]
+else:
+    current_prompt = st.session_state.get("current_prompt", base_prompt)
+
+# Editable instruction template
+custom_prompt = st.text_area("Instruction template (editable)", current_prompt, height=300)
+
+# Save-as functionality
+name = st.text_input("Save current instruction as (name)", "")
+if st.button("Save instruction"):
+    if not name.strip():
+        st.warning("Provide a name to save.")
+    else:
+        st.session_state.saved_prompts[name.strip()] = custom_prompt
+        st.session_state.current_prompt = custom_prompt
+        st.success(f"Saved as '{name.strip()}'")
+
+# Option to delete a saved instruction
+if saved_choice != "-- none --":
+    if st.button(f"Delete saved instruction '{saved_choice}'"):
+        st.session_state.saved_prompts.pop(saved_choice, None)
+        st.success(f"Deleted '{saved_choice}'")
+        st.experimental_rerun()
+
+st.markdown("---")
+
+# --- protocol input ---
 protocol = st.text_area("Paste your protocol here", height=220)
 
-# Show a small toggle to reset to preset
-if st.button("Reset to preset"):
-    st.experimental_rerun()
-
+# --- core logic: LLM call ---
 def detect_and_optimize(protocol_text, prompt_template):
     prompt = prompt_template.replace("{protocol_text}", protocol_text.strip())
     client = openai.OpenAI()
@@ -74,7 +113,7 @@ def detect_and_optimize(protocol_text, prompt_template):
         "- Checklist: [ ] Ready, [ ] Started, [ ] Monitored."
     )
 
-st.markdown("---")
+# --- action button ---
 if st.button("Optimize"):
     if not protocol.strip():
         st.warning("Paste a protocol first.")
