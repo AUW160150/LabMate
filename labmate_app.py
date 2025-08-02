@@ -21,19 +21,28 @@ You are a practical wet lab assistant. Given the protocol below, do the followin
 Protocol:
 {protocol_text}
 """
+    client = openai.OpenAI()
     model_sequence = ["gpt-4", "gpt-4-0613", "gpt-3.5-turbo"]
     last_error = None
     for model in model_sequence:
         try:
-            resp = openai.ChatCompletion.create(
+            resp = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
             )
-            return f"**Used model:** {model}\n\n" + resp["choices"][0]["message"]["content"]
+            content = resp.choices[0].message.content
+            return f"**Used model:** {model}\n\n" + content
         except Exception as e:
             last_error = e
-    return f"All model attempts failed. Last error: {last_error}\n\nFallback example:\n**Issues:** Incubation overlap.\n**Parallelization:** Start gel prep during incubation.\n**Optimized Protocol:** 1. Prepare reagents (5m); 2. Start lysis while preheating gel apparatus; ...\n**Checklist:** [ ] Reagents ready, [ ] Lysis started, [ ] Gel set up."
+    return (
+        f"All model attempts failed. Last error: {last_error}\n\n"
+        "Fallback example:\n"
+        "**Issues:** Incubation overlap.\n"
+        "**Parallelization:** Start gel prep during incubation.\n"
+        "**Optimized Protocol:** 1. Prepare reagents (5m); 2. Start lysis while preheating gel apparatus; ...\n"
+        "**Checklist:** [ ] Reagents ready, [ ] Lysis started, [ ] Gel set up."
+    )
 
 if st.button("Optimize"):
     if not protocol.strip():
