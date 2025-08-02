@@ -6,15 +6,22 @@ st.set_page_config(page_title="LabMate", layout="wide")
 st.title("🧪 LabMate: AI Copilot for Wet Lab Protocols")
 st.write("1. Pick or customize the instruction/template. 2. Paste your protocol. 3. Click Optimize. You can save reusable instruction templates or full presets (type + instruction).")
 
-# --- base prompt presets ---
-protocol_type = st.selectbox("Protocol type (preset)", ["General wet lab", "PCR", "Rodent brain surgery","RNA extraction","Cell transfection", "Histology","Flow Cytometry", "Synthetic biology assay",
-"Organoid culture","DNA extraction","cDNA synthesis","Western blot","ELISA","qPCR","CRISPR genome editing","Gel electrophoresis","Bacterial transformation","Plasmid purification","Immunoprecipitation",
-"Immunofluorescence","Live cell imaging","Single-cell RNA-seq","Chromatin immunoprecipitation (ChIP)","Tissue staining","In vivo imaging","Optogenetics","Stereotaxic injection",
-"Yeast transformation","NGS library prep","Cell cycle assay","Time-course experiment setup"
-])
-
+# --- protocol type selection with aliasing to avoid missing defaults ---
+protocol_type = st.selectbox(
+    "Protocol type (preset)",
+    [
+        "General wet lab", "PCR", "Rodent brain surgery", "RNA extraction", "Cell transfection", "Histology",
+        "Flow Cytometry", "Synthetic biology assay", "Organoid culture", "DNA extraction", "cDNA synthesis",
+        "Western blot", "ELISA", "qPCR", "CRISPR genome editing", "Gel electrophoresis", "Bacterial transformation",
+        "Plasmid purification", "Immunoprecipitation", "Immunofluorescence", "Live cell imaging", "Single-cell RNA-seq",
+        "Chromatin immunoprecipitation (ChIP)", "Tissue staining", "In vivo imaging", "Optogenetics",
+        "Stereotaxic injection", "Yeast transformation", "NGS library prep", "Cell cycle assay",
+        "Time-course experiment setup"
+    ]
+)
 st.caption("Pick the context that best matches your protocol; this seeds a starting instruction. You can edit it below.")
 
+# Define base prompt templates
 default_prompts = {
     "General wet lab": """You are a practical wet lab assistant. Given the protocol below, do the following clearly and concisely:
 
@@ -46,11 +53,45 @@ Protocol:
 {protocol_text}"""
 }
 
-# --- session persistence for instructions and full presets ---
+# Map many protocol types to the existing base prompt keys
+alias_map = {
+    "RNA extraction": "General wet lab",
+    "Cell transfection": "General wet lab",
+    "Histology": "General wet lab",
+    "Flow Cytometry": "General wet lab",
+    "Synthetic biology assay": "General wet lab",
+    "Organoid culture": "General wet lab",
+    "DNA extraction": "General wet lab",
+    "cDNA synthesis": "General wet lab",
+    "Western blot": "General wet lab",
+    "ELISA": "General wet lab",
+    "qPCR": "PCR",
+    "CRISPR genome editing": "General wet lab",
+    "Gel electrophoresis": "General wet lab",
+    "Bacterial transformation": "General wet lab",
+    "Plasmid purification": "General wet lab",
+    "Immunoprecipitation": "General wet lab",
+    "Immunofluorescence": "General wet lab",
+    "Live cell imaging": "General wet lab",
+    "Single-cell RNA-seq": "General wet lab",
+    "Chromatin immunoprecipitation (ChIP)": "General wet lab",
+    "Tissue staining": "General wet lab",
+    "In vivo imaging": "General wet lab",
+    "Optogenetics": "General wet lab",
+    "Stereotaxic injection": "Rodent brain surgery",
+    "Yeast transformation": "General wet lab",
+    "NGS library prep": "General wet lab",
+    "Cell cycle assay": "General wet lab",
+    "Time-course experiment setup": "General wet lab"
+}
+
+effective_type = alias_map.get(protocol_type, protocol_type)
+
+# --- session persistence for instruction templates and full presets ---
 if "saved_instructions" not in st.session_state:
-    st.session_state.saved_instructions = {}  # name -> prompt string
+    st.session_state.saved_instructions = {}
 if "saved_full_presets" not in st.session_state:
-    st.session_state.saved_full_presets = {}  # name -> {type, prompt}
+    st.session_state.saved_full_presets = {}
 
 # --- instruction/template selection/loading ---
 st.markdown("### 1. Instruction Template / Context")
@@ -61,19 +102,19 @@ with instr_cols[1]:
     saved_preset_choice = st.selectbox("Load saved full preset (type + instruction)", ["-- none --"] + list(st.session_state.saved_full_presets.keys()))
 with instr_cols[2]:
     if st.button("Reset to default for selected type"):
-        st.session_state.current_prompt = default_prompts[protocol_type]
-        # safe rerun so UI refreshes with the reset template
+        st.session_state.current_prompt = default_prompts.get(effective_type, default_prompts["General wet lab"])
         st.experimental_rerun()
 
 # Determine base prompt safely
 if saved_preset_choice != "-- none --" and saved_preset_choice in st.session_state.saved_full_presets:
     preset_obj = st.session_state.saved_full_presets[saved_preset_choice]
     base_prompt = preset_obj["prompt"]
-    protocol_type = preset_obj["type"]  # reflect loaded preset's type
+    # override effective_type with loaded preset's type if needed
+    effective_type = preset_obj.get("type", effective_type)
 elif saved_instr_choice != "-- none --" and saved_instr_choice in st.session_state.saved_instructions:
     base_prompt = st.session_state.saved_instructions[saved_instr_choice]
 else:
-    base_prompt = st.session_state.get("current_prompt", default_prompts[protocol_type])
+    base_prompt = st.session_state.get("current_prompt", default_prompts.get(effective_type, default_prompts["General wet lab"]))
 
 st.caption("Edit the instruction below to tell LabMate how to interpret the protocol. You can emphasize safety, time savings, missing details, etc.")
 custom_prompt = st.text_area("Instruction template (editable)", base_prompt, height=300)
