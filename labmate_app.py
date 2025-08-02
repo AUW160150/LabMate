@@ -1,3 +1,4 @@
+from addgene_fetcher import fetch_plasmid_info
 import streamlit as st
 import openai
 import io
@@ -274,6 +275,20 @@ def detect_and_optimize(protocol_text, prompt_template):
     )
 
 st.markdown("---")
+# --- protocol input ---
+st.markdown("### 2. Protocol")
+st.caption("Paste the raw protocol steps here...")
+protocol = st.text_area("Protocol text", height=220)
+
+# --- plasmid input & enrichment ---
+plasmid_id = st.text_input("Enter Addgene Plasmid ID")
+if plasmid_id:
+    data = fetch_plasmid_info(plasmid_id)
+    st.write(f"**Name**: {data['name']}")
+    st.write(f"**Features**: {', '.join(data['features'])}")
+    st.write(f"[View on Addgene]({data['url']})")
+
+    protocol += f"\n\n[Plasmid Context] {data['name']} with features: {', '.join(data['features'])}"
 st.markdown("### 3. Run Optimization")
 st.caption("Click Optimize to send the instruction + protocol to the model and get structured, actionable output.")
 
