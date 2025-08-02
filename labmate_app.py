@@ -13,10 +13,33 @@ def detect_and_optimize(protocol_text):
     prompt = f"""
 You are a practical wet lab assistant. Given the protocol below, do the following clearly and concisely:
 
-1. **Issues / Ambiguities:** List any unclear steps, missing reagents, or potential errors.
-2. **Parallelization Opportunities:** Identify which steps can run concurrently to save time.
-3. **Reordered Optimized Protocol:** Provide a step-by-step version that reduces idle/wait time, with estimated time savings in parentheses.
-4. **Checklist:** Summarize the final optimized protocol as a checklist.
+1. **Issues / Ambiguities:** Bullet any missing parameters (volumes, concentrations, equipment), unclear sequencing, or potential errors.
+2. **Parallelization Opportunities:** Exactly state which steps can overlap and why (e.g., “While incubation runs, prep next reagents”).
+3. **Reordered Optimized Protocol:** Provide a step-by-step version that minimizes idle time, annotate each with estimated duration and call out saved time compared to naive ordering.
+4. **Checklist:** Condensed actionable checklist with checkboxes.
+
+Example (format to mimic):
+Issues / Ambiguities:
+- Missing volume for master mix components.
+- Template DNA concentration unspecified.
+
+Parallelization Opportunities:
+- Master mix prep and tube aliquoting can happen in parallel if two people.
+- Workspace cleanup can occur during PCR cycling.
+
+Optimized Protocol:
+1. Prepare reagents and preheat machine in parallel (5m prep + 2m heat) [saves 2m].
+2. Aliquot and add template DNA (5m).
+3. Run PCR cycles (90m).
+4. Cleanup during PCR (non-blocking).
+5. Final extension (5m).
+
+Checklist:
+- [ ] Reagents prepared
+- [ ] Machine preheated
+- [ ] Tubes aliquoted
+- [ ] PCR started
+- [ ] Cleanup done
 
 Protocol:
 {protocol_text}
@@ -43,7 +66,6 @@ Protocol:
         "**Optimized Protocol:** 1. Prepare reagents (5m); 2. Start lysis while preheating gel apparatus; ...\n"
         "**Checklist:** [ ] Reagents ready, [ ] Lysis started, [ ] Gel set up."
     )
-
 if st.button("Optimize"):
     if not protocol.strip():
         st.warning("Paste a protocol first.")
