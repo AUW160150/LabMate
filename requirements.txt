@@ -1,2 +1,4 @@
 streamlit
 openai>=1.0.0
+requests
+PyPDF2
