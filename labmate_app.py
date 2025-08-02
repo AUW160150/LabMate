@@ -1,4 +1,6 @@
 import streamlit as st
+st.write("Has key?", "OPENAI_API_KEY" in st.secrets)
+
 import openai
 
 st.set_page_config(page_title="LabMate", layout="wide")
