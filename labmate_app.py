@@ -1,27 +1,56 @@
 import streamlit as st
 import openai
+import io
+from PyPDF2 import PdfReader
 
 # --- page setup ---
 st.set_page_config(page_title="LabMate", layout="wide")
 st.title("🧪 LabMate: AI Copilot for Wet Lab Protocols")
-st.write("1. Pick or customize the instruction/template. 2. Paste your protocol. 3. Click Optimize. You can save reusable instruction templates or full presets (type + instruction).")
+st.write(
+    "1. Import or paste your protocol. 2. Pick or customize the instruction/template. "
+    "3. Click Optimize. You can save reusable instruction templates or full presets (type + instruction)."
+)
 
-# --- protocol type selection with aliasing to avoid missing defaults ---
+# --- protocol type selection with aliasing ---
 protocol_type = st.selectbox(
     "Protocol type (preset)",
     [
-        "General wet lab", "PCR", "Rodent brain surgery", "RNA extraction", "Cell transfection", "Histology",
-        "Flow Cytometry", "Synthetic biology assay", "Organoid culture", "DNA extraction", "cDNA synthesis",
-        "Western blot", "ELISA", "qPCR", "CRISPR genome editing", "Gel electrophoresis", "Bacterial transformation",
-        "Plasmid purification", "Immunoprecipitation", "Immunofluorescence", "Live cell imaging", "Single-cell RNA-seq",
-        "Chromatin immunoprecipitation (ChIP)", "Tissue staining", "In vivo imaging", "Optogenetics",
-        "Stereotaxic injection", "Yeast transformation", "NGS library prep", "Cell cycle assay",
-        "Time-course experiment setup"
-    ]
+        "General wet lab",
+        "PCR",
+        "Rodent brain surgery",
+        "RNA extraction",
+        "Cell transfection",
+        "Histology",
+        "Flow Cytometry",
+        "Synthetic biology assay",
+        "Organoid culture",
+        "DNA extraction",
+        "cDNA synthesis",
+        "Western blot",
+        "ELISA",
+        "qPCR",
+        "CRISPR genome editing",
+        "Gel electrophoresis",
+        "Bacterial transformation",
+        "Plasmid purification",
+        "Immunoprecipitation",
+        "Immunofluorescence",
+        "Live cell imaging",
+        "Single-cell RNA-seq",
+        "Chromatin immunoprecipitation (ChIP)",
+        "Tissue staining",
+        "In vivo imaging",
+        "Optogenetics",
+        "Stereotaxic injection",
+        "Yeast transformation",
+        "NGS library prep",
+        "Cell cycle assay",
+        "Time-course experiment setup",
+    ],
 )
 st.caption("Pick the context that best matches your protocol; this seeds a starting instruction. You can edit it below.")
 
-# Define base prompt templates
+# Base prompt templates
 default_prompts = {
     "General wet lab": """You are a practical wet lab assistant. Given the protocol below, do the following clearly and concisely:
 
@@ -50,10 +79,10 @@ Protocol:
 5. Contingencies: brief mitigation steps.
 
 Protocol:
-{protocol_text}"""
+{protocol_text}""",
 }
 
-# Map many protocol types to the existing base prompt keys
+# Alias mapping
 alias_map = {
     "RNA extraction": "General wet lab",
     "Cell transfection": "General wet lab",
@@ -82,7 +111,7 @@ alias_map = {
     "Yeast transformation": "General wet lab",
     "NGS library prep": "General wet lab",
     "Cell cycle assay": "General wet lab",
-    "Time-course experiment setup": "General wet lab"
+    "Time-course experiment setup": "General wet lab",
 }
 
 effective_type = alias_map.get(protocol_type, protocol_type)
@@ -93,13 +122,57 @@ if "saved_instructions" not in st.session_state:
 if "saved_full_presets" not in st.session_state:
     st.session_state.saved_full_presets = {}
 
+# --- import / protocol acquisition UI ---
+st.markdown("### 0. Import or Paste Protocol (no API required)")
+st.caption(
+    "Options: 1) Copy-paste protocol text directly from Benchling or any source. "
+    "2) Export the protocol to PDF (e.g., print to PDF) and upload it here—LabMate will extract the text. "
+    "3) Screenshot + OCR as fallback. You can edit the resulting protocol below."
+)
+import_cols = st.columns(2)
+
+with import_cols[0]:
+    st.subheader("Upload local protocol")
+    st.caption("Supports .txt, .md, and .pdf. Extracted text will prefill the protocol area.")
+    uploaded_file = st.file_uploader("Upload protocol file", type=["txt", "md", "pdf"])
+    if uploaded_file:
+        content_text = ""
+        filename = uploaded_file.name.lower()
+        try:
+            if filename.endswith(".pdf"):
+                reader = PdfReader(io.BytesIO(uploaded_file.read()))
+                pages = []
+                for page in reader.pages:
+                    pages.append(page.extract_text() or "")
+                content_text = "\n".join(pages)
+            else:
+                raw = uploaded_file.read()
+                if isinstance(raw, bytes):
+                    content_text = raw.decode("utf-8", errors="ignore")
+                else:
+                    content_text = str(raw)
+            st.session_state.fetched_protocol = content_text
+            st.success(f"Loaded {uploaded_file.name}; protocol prefilled below.")
+        except Exception as e:
+            st.error(f"Failed to parse file: {e}")
+
+with import_cols[1]:
+    st.subheader("Copy / Paste")
+    st.caption("Manually paste protocol steps from Benchling or other sources into the box below.")
+
 # --- instruction/template selection/loading ---
 st.markdown("### 1. Instruction Template / Context")
 instr_cols = st.columns([3, 2, 2])
 with instr_cols[0]:
-    saved_instr_choice = st.selectbox("Load saved instruction only (template)", ["-- none --"] + list(st.session_state.saved_instructions.keys()))
+    saved_instr_choice = st.selectbox(
+        "Load saved instruction only (template)",
+        ["-- none --"] + list(st.session_state.saved_instructions.keys()),
+    )
 with instr_cols[1]:
-    saved_preset_choice = st.selectbox("Load saved full preset (type + instruction)", ["-- none --"] + list(st.session_state.saved_full_presets.keys()))
+    saved_preset_choice = st.selectbox(
+        "Load saved full preset (type + instruction)",
+        ["-- none --"] + list(st.session_state.saved_full_presets.keys()),
+    )
 with instr_cols[2]:
     if st.button("Reset to default for selected type"):
         st.session_state.current_prompt = default_prompts.get(effective_type, default_prompts["General wet lab"])
@@ -109,14 +182,18 @@ with instr_cols[2]:
 if saved_preset_choice != "-- none --" and saved_preset_choice in st.session_state.saved_full_presets:
     preset_obj = st.session_state.saved_full_presets[saved_preset_choice]
     base_prompt = preset_obj["prompt"]
-    # override effective_type with loaded preset's type if needed
     effective_type = preset_obj.get("type", effective_type)
 elif saved_instr_choice != "-- none --" and saved_instr_choice in st.session_state.saved_instructions:
     base_prompt = st.session_state.saved_instructions[saved_instr_choice]
 else:
-    base_prompt = st.session_state.get("current_prompt", default_prompts.get(effective_type, default_prompts["General wet lab"]))
+    base_prompt = st.session_state.get(
+        "current_prompt", default_prompts.get(effective_type, default_prompts["General wet lab"])
+    )
 
-st.caption("Edit the instruction below to tell LabMate how to interpret the protocol. You can emphasize safety, time savings, missing details, etc.")
+st.caption(
+    "Edit the instruction below to tell LabMate how to interpret the protocol. "
+    "You can emphasize safety, time savings, missing details, etc."
+)
 custom_prompt = st.text_area("Instruction template (editable)", base_prompt, height=300)
 
 # Save instruction template only
@@ -157,8 +234,18 @@ st.markdown("---")
 
 # --- protocol input ---
 st.markdown("### 2. Protocol")
-st.caption("Paste the raw protocol steps here. Don't duplicate instructions; the assistant will apply the instruction/template to this protocol.")
-protocol = st.text_area("Protocol text", height=220)
+st.caption(
+    "Paste or edit the raw protocol steps here. You can also import via upload above. "
+    "Do not repeat instruction details; LabMate uses the template to interpret this."
+)
+initial_protocol_value = st.session_state.get("fetched_protocol", "")
+protocol = st.text_area("Protocol text", value=initial_protocol_value, height=220)
+
+# Clear protocol
+if st.button("Clear protocol"):
+    protocol = ""
+    st.session_state.fetched_protocol = ""
+    st.experimental_rerun()
 
 # --- optimization logic ---
 def detect_and_optimize(protocol_text, prompt_template):
