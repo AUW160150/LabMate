@@ -22,6 +22,7 @@ Protocol:
 {protocol_text}
 """
     model_sequence = ["gpt-4", "gpt-4-0613", "gpt-3.5-turbo"]
+    last_error = None
     for model in model_sequence:
         try:
             resp = openai.ChatCompletion.create(
@@ -30,9 +31,9 @@ Protocol:
                 temperature=0.2,
             )
             return f"**Used model:** {model}\n\n" + resp["choices"][0]["message"]["content"]
-        except Exception:
-            continue
-    return "All model attempts failed. Showing fallback example.\n\n**Issues:** Incubation overlap.\n**Parallelization:** Start gel prep during incubation.\n**Optimized Protocol:** 1. Prepare reagents (5m); 2. Start lysis while preheating gel apparatus; ...\n**Checklist:** [ ] Reagents ready, [ ] Lysis started, [ ] Gel set up."
+        except Exception as e:
+            last_error = e
+    return f"All model attempts failed. Last error: {last_error}\n\nFallback example:\n**Issues:** Incubation overlap.\n**Parallelization:** Start gel prep during incubation.\n**Optimized Protocol:** 1. Prepare reagents (5m); 2. Start lysis while preheating gel apparatus; ...\n**Checklist:** [ ] Reagents ready, [ ] Lysis started, [ ] Gel set up."
 
 if st.button("Optimize"):
     if not protocol.strip():
