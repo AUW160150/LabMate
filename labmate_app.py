@@ -5,7 +5,7 @@ from PyPDF2 import PdfReader
 
 # --- page setup ---
 st.set_page_config(page_title="LabMate", layout="wide")
-st.title("🧪 LabMate: AI Copilot for Wet Lab Protocols")
+st.title("🧪 LabMate: AI Copilot for Lab Protocols")
 st.write(
     "1. Import or paste your protocol. 2. Pick or customize the instruction/template. "
     "3. Click Optimize. You can save reusable instruction templates or full presets (type + instruction)."
@@ -15,9 +15,9 @@ st.write(
 protocol_type = st.selectbox(
     "Protocol type (preset)",
     [
-        "General wet lab",
+        "General lab protocol",
         "PCR",
-        "Rodent brain surgery",
+        "Surgical procedure",
         "RNA extraction",
         "Cell transfection",
         "Histology",
@@ -39,44 +39,49 @@ protocol_type = st.selectbox(
         "Single-cell RNA-seq",
         "Chromatin immunoprecipitation (ChIP)",
         "Tissue staining",
-        "In vivo imaging",
+        "Microscopy imaging",
         "Optogenetics",
-        "Stereotaxic injection",
+        "Stereotaxic procedures",
         "Yeast transformation",
         "NGS library prep",
         "Cell cycle assay",
-        "Time-course experiment setup",
+        "Time-course experiment",
+        "Biochemical assay",
+        "Protein purification",
+        "Enzymatic assay",
     ],
 )
 st.caption("Pick the context that best matches your protocol; this seeds a starting instruction. You can edit it below.")
 
 # Base prompt templates
 default_prompts = {
-    "General wet lab": """You are a practical wet lab assistant. Given the protocol below, do the following clearly and concisely:
+    "General lab protocol": """You are a practical lab assistant. Given the protocol below, do the following clearly and concisely:
 
 1. **Issues / Ambiguities:** Bullet any missing parameters (volumes, concentrations, equipment), unclear sequencing, or potential errors.
 2. **Parallelization Opportunities:** Exactly state which steps can overlap and why.
-3. **Reordered Optimized Protocol:** Provide a step-by-step version that minimizes idle time, annotate each with estimated duration and saved time.
+3. **Reordered Optimized Protocol:** Provide a step-by-step version that minimizes idle time, annotate each with estimated duration and time savings.
 4. **Checklist:** Condensed actionable checklist with checkboxes.
 
 Protocol:
 {protocol_text}""",
-    "PCR": """You are a practical wet lab assistant focused on PCR workflows. Given the protocol below, do the following:
+    
+    "PCR": """You are a practical lab assistant focused on PCR workflows. Given the protocol below, do the following:
 
-1. List missing reagent volumes, thermal cycling parameters, and ambiguity.
-2. Point out what can be parallelized (e.g., tube preparation during machine warm-up).
-3. Reorder to minimize idle time and annotate estimated duration.
-4. Give a concise checklist.
+1. **Issues/Ambiguities:** List missing reagent volumes, thermal cycling parameters, and unclear steps.
+2. **Parallelization:** Point out what can be done simultaneously (e.g., tube preparation during machine warm-up).
+3. **Optimized Protocol:** Reorder to minimize idle time and annotate estimated duration.
+4. **Checklist:** Give a concise actionable checklist.
 
 Protocol:
 {protocol_text}""",
-    "Rodent brain surgery": """You are an expert surgical lab assistant for rodent brain surgery. Given the protocol below, do the following with safety focus:
+    
+    "Surgical procedure": """You are an expert surgical lab assistant. Given the protocol below, do the following with safety and efficiency focus:
 
-1. Issues/Ambiguities: missing doses, sterility lapses, monitoring gaps.
-2. Parallelization: prep that can happen while anesthesia stabilizes.
-3. Optimized Protocol: minimize anesthesia time with rationale.
-4. Safety & Recovery Checklist.
-5. Contingencies: brief mitigation steps.
+1. **Issues/Ambiguities:** Missing doses, sterility concerns, timing gaps, unclear monitoring steps.
+2. **Parallelization:** Preparation steps that can happen during setup or waiting periods.
+3. **Optimized Protocol:** Minimize procedure time while maintaining safety, with clear rationale.
+4. **Safety & Workflow Checklist:** Essential safety checks and workflow steps.
+5. **Contingencies:** Brief mitigation steps for common issues.
 
 Protocol:
 {protocol_text}""",
@@ -84,34 +89,37 @@ Protocol:
 
 # Alias mapping
 alias_map = {
-    "RNA extraction": "General wet lab",
-    "Cell transfection": "General wet lab",
-    "Histology": "General wet lab",
-    "Flow Cytometry": "General wet lab",
-    "Synthetic biology assay": "General wet lab",
-    "Organoid culture": "General wet lab",
-    "DNA extraction": "General wet lab",
-    "cDNA synthesis": "General wet lab",
-    "Western blot": "General wet lab",
-    "ELISA": "General wet lab",
+    "RNA extraction": "General lab protocol",
+    "Cell transfection": "General lab protocol",
+    "Histology": "General lab protocol",
+    "Flow Cytometry": "General lab protocol",
+    "Synthetic biology assay": "General lab protocol",
+    "Organoid culture": "General lab protocol",
+    "DNA extraction": "General lab protocol",
+    "cDNA synthesis": "General lab protocol",
+    "Western blot": "General lab protocol",
+    "ELISA": "General lab protocol",
     "qPCR": "PCR",
-    "CRISPR genome editing": "General wet lab",
-    "Gel electrophoresis": "General wet lab",
-    "Bacterial transformation": "General wet lab",
-    "Plasmid purification": "General wet lab",
-    "Immunoprecipitation": "General wet lab",
-    "Immunofluorescence": "General wet lab",
-    "Live cell imaging": "General wet lab",
-    "Single-cell RNA-seq": "General wet lab",
-    "Chromatin immunoprecipitation (ChIP)": "General wet lab",
-    "Tissue staining": "General wet lab",
-    "In vivo imaging": "General wet lab",
-    "Optogenetics": "General wet lab",
-    "Stereotaxic injection": "Rodent brain surgery",
-    "Yeast transformation": "General wet lab",
-    "NGS library prep": "General wet lab",
-    "Cell cycle assay": "General wet lab",
-    "Time-course experiment setup": "General wet lab",
+    "CRISPR genome editing": "General lab protocol",
+    "Gel electrophoresis": "General lab protocol",
+    "Bacterial transformation": "General lab protocol",
+    "Plasmid purification": "General lab protocol",
+    "Immunoprecipitation": "General lab protocol",
+    "Immunofluorescence": "General lab protocol",
+    "Live cell imaging": "General lab protocol",
+    "Single-cell RNA-seq": "General lab protocol",
+    "Chromatin immunoprecipitation (ChIP)": "General lab protocol",
+    "Tissue staining": "General lab protocol",
+    "Microscopy imaging": "General lab protocol",
+    "Optogenetics": "General lab protocol",
+    "Stereotaxic procedures": "Surgical procedure",
+    "Yeast transformation": "General lab protocol",
+    "NGS library prep": "General lab protocol",
+    "Cell cycle assay": "General lab protocol",
+    "Time-course experiment": "General lab protocol",
+    "Biochemical assay": "General lab protocol",
+    "Protein purification": "General lab protocol",
+    "Enzymatic assay": "General lab protocol",
 }
 
 effective_type = alias_map.get(protocol_type, protocol_type)
@@ -175,8 +183,8 @@ with instr_cols[1]:
     )
 with instr_cols[2]:
     if st.button("Reset to default for selected type"):
-        st.session_state.current_prompt = default_prompts.get(effective_type, default_prompts["General wet lab"])
-        st.experimental_rerun()
+        st.session_state.current_prompt = default_prompts.get(effective_type, default_prompts["General lab protocol"])
+        st.rerun()
 
 # Determine base prompt safely
 if saved_preset_choice != "-- none --" and saved_preset_choice in st.session_state.saved_full_presets:
@@ -187,7 +195,7 @@ elif saved_instr_choice != "-- none --" and saved_instr_choice in st.session_sta
     base_prompt = st.session_state.saved_instructions[saved_instr_choice]
 else:
     base_prompt = st.session_state.get(
-        "current_prompt", default_prompts.get(effective_type, default_prompts["General wet lab"])
+        "current_prompt", default_prompts.get(effective_type, default_prompts["General lab protocol"])
     )
 
 st.caption(
@@ -210,7 +218,7 @@ with st.expander("Save current instruction as template"):
         if st.button(f"Delete instruction template '{saved_instr_choice}'"):
             st.session_state.saved_instructions.pop(saved_instr_choice, None)
             st.success(f"Deleted instruction template '{saved_instr_choice}'")
-            st.experimental_rerun()
+            st.rerun()
 
 # Save full preset (type + instruction)
 with st.expander("Save full preset (type + instruction)"):
@@ -228,7 +236,7 @@ with st.expander("Save full preset (type + instruction)"):
         if st.button(f"Delete full preset '{saved_preset_choice}'"):
             st.session_state.saved_full_presets.pop(saved_preset_choice, None)
             st.success(f"Deleted full preset '{saved_preset_choice}'")
-            st.experimental_rerun()
+            st.rerun()
 
 st.markdown("---")
 
@@ -245,7 +253,7 @@ protocol = st.text_area("Protocol text", value=initial_protocol_value, height=22
 if st.button("Clear protocol"):
     protocol = ""
     st.session_state.fetched_protocol = ""
-    st.experimental_rerun()
+    st.rerun()
 
 # --- optimization logic ---
 def detect_and_optimize(protocol_text, prompt_template):
