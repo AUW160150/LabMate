@@ -1,7 +1,7 @@
 # LabMate
 As someone who’s worked in brain surgery and stem cell labs, I know how chaotic protocols can be. LabMate is the AI lab partner I wish I had.
 
-This i an AI-Powered Lab Protocol Optimization Tool:
+This is an AI-Powered Lab Protocol Optimization Tool:
 Built an interactive Streamlit web application that serves as an AI copilot for laboratory protocols.
 
 Integrated OpenAI GPT models (GPT-4, GPT-3.5) to analyze, restructure, and optimize scientific protocols for clarity, efficiency, and parallelization opportunities.
